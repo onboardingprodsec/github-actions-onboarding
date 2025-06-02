@@ -16,3 +16,8 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(utils.divide(6, 2), 3)
         with self.assertRaises(ValueError):
             utils.divide(5, 0)
+
+    def test_square(self):
+        self.assertEqual(utils.square(4), 16)
+        self.assertEqual(utils.square(-3), 9)
+
