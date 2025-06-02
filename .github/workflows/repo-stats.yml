@@ -4,11 +4,6 @@ on:
   pull_request:
     types: [opened, synchronize, closed]
 
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
-
 jobs:
   repo-stats:
     runs-on: ubuntu-latest
@@ -16,8 +11,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Important: fetch all branches
 
-      - name: Count files and lines
+      - name: Count files and lines (current branch)
         id: count
         run: |
           total_files=$(find . -type f | wc -l)
@@ -25,13 +22,29 @@ jobs:
           echo "files=$total_files" >> $GITHUB_OUTPUT
           echo "lines=$total_lines" >> $GITHUB_OUTPUT
 
-      - name: Comment on PR
+      - name: Count files and lines for all branches
+        id: allbranches
+        run: |
+          git fetch --all
+          branch_stats=""
+          for branch in $(git branch -r | grep -v '\->' | sed 's/origin\///'); do
+            git checkout -q $branch
+            files=$(find . -type f | wc -l)
+            lines=$(find . -type f -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' | xargs wc -l | tail -n1 | awk '{print $1}')
+            branch_stats="${branch_stats}- **$branch**: $files files, $lines lines\n"
+          done
+          echo -e "branch_stats<<EOF\n${branch_stats}EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR with full stats
         uses: peter-evans/create-or-update-comment@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            📊 **Repo Stats After This PR:**
+            📊 **Repo Stats After This PR**
 
-            - Total files: ${{ steps.count.outputs.files }}
-            - Total lines of code: ${{ steps.count.outputs.lines }}
+            - Total files (this branch): ${{ steps.count.outputs.files }}
+            - Total lines of code (this branch): ${{ steps.count.outputs.lines }}
+
+            ### 📂 Stats for All Branches:
+            ${{ steps.allbranches.outputs.branch_stats }}
