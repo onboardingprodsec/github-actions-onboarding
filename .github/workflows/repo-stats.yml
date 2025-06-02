@@ -53,3 +53,10 @@ jobs:
 
             ### 📂 Stats for All Branches:
             ${{ steps.allbranches.outputs.branch_stats }}
+
+      - name: Send alert to Google Chat
+        run: |
+          message="Repo Stats After PR: ${{ steps.count.outputs.files }} files, ${{ steps.count.outputs.lines }} lines"
+          curl -X POST -H "Content-Type: application/json" \
+            -d "{\"text\": \"$message\"}" \
+            ${{ secrets.GCHAT_WEBHOOK }}
