@@ -22,11 +22,11 @@ jobs:
       - name: Count files and lines (current branch)
         id: count
         run: |
-          total_files=$(find . -type f | wc -l)
+          total_files=$(find . -type f -not -path "./.git/*" | wc -l)
           total_lines=$(find . -type f -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' | xargs wc -l | tail -n1 | awk '{print $1}')
           echo "files=$total_files" >> $GITHUB_OUTPUT
           echo "lines=$total_lines" >> $GITHUB_OUTPUT
-
+    
       - name: Count files and lines for all branches
         id: allbranches
         run: |
@@ -39,7 +39,7 @@ jobs:
             branch_stats="${branch_stats}- **$branch**: $files files, $lines lines\n"
           done
           echo -e "branch_stats<<EOF\n${branch_stats}EOF" >> $GITHUB_OUTPUT
-
+    
       - name: Comment on PR with full stats
         uses: peter-evans/create-or-update-comment@v3
         with:
