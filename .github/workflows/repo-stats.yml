@@ -7,3 +7,26 @@ on:
 jobs:
   repo-stats:
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Count files and lines
+        id: count
+        run: |
+          total_files=$(find . -type f | wc -l)
+          total_lines=$(find . -type f -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' | xargs wc -l | tail -n1 | awk '{print $1}')
+          echo "files=$total_files" >> $GITHUB_OUTPUT
+          echo "lines=$total_lines" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            📊 **Repo Stats After This PR:**
+
+            - Total files: ${{ steps.count.outputs.files }}
+            - Total lines of code: ${{ steps.count.outputs.lines }}
