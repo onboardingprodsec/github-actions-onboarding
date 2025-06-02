@@ -15,3 +15,8 @@ def divide(a, b):
 
 def square(a):
     return a * a
+
+def square_root(a):
+    if a < 0:
+        raise ValueError("Cannot take square root of negative number")
+    return a ** 0.5
