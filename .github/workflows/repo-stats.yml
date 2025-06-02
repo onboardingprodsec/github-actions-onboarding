@@ -30,30 +30,15 @@ jobs:
       - name: Count files and lines for all branches
         id: allbranches
         run: |
-          git fetch --all --quiet
-          tmp_dir=$(mktemp -d)
+          git fetch --all
           branch_stats=""
-
-          for branch in $(git branch -r | grep -v '\->' | sed 's|origin/||' | grep -Ev '^pull/|^HEAD$'); do
-            echo "::group::Processing $branch"
-            git worktree add --quiet "$tmp_dir/$branch" origin/$branch
-            cd "$tmp_dir/$branch"
-
+          for branch in $(git branch -r | grep -v '\->' | sed 's/origin\///'); do
+            git checkout -q $branch
             files=$(find . -type f -not -path "./.git/*" | wc -l)
             lines=$(find . -type f \( -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' \) -exec cat {} + | wc -l)
-
-            branch_stats+="- **$branch**: $files files, $lines lines\n"
-
-            cd - >/dev/null
-            git worktree remove -f "$tmp_dir/$branch"
-            echo "::endgroup::"
+            branch_stats="${branch_stats}- **$branch**: $files files, $lines lines\n"
           done
-
-          branch_stats="${branch_stats//'%'/'%25'}"
-          branch_stats="${branch_stats//$'\n'/'%0A'}"
-          branch_stats="${branch_stats//$'\r'/'%0D'}"
-
-          echo "branch_stats=$branch_stats" >> $GITHUB_OUTPUT
+            echo -e "branch_stats<<EOF\n${branch_stats}EOF" >> $GITHUB_OUTPUT
 
       - name: Comment on PR with full stats
         uses: peter-evans/create-or-update-comment@v3
