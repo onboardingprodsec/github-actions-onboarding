@@ -1,0 +1,9 @@
+name: Repo Stats After PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+
+jobs:
+  repo-stats:
+    runs-on: ubuntu-latest
