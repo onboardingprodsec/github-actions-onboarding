@@ -23,22 +23,39 @@ jobs:
         id: count
         run: |
           total_files=$(find . -type f -not -path "./.git/*" | wc -l)
-          total_lines=$(find . -type f -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' | xargs wc -l | tail -n1 | awk '{print $1}')
+          total_lines=$(find . -type f \( -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' \) \
+          -exec cat {} + | wc -l)
           echo "files=$total_files" >> $GITHUB_OUTPUT
           echo "lines=$total_lines" >> $GITHUB_OUTPUT
     
       - name: Count files and lines for all branches
         id: allbranches
         run: |
-          git fetch --all
+          git fetch --all --quiet
+          tmp_dir=$(mktemp -d)
           branch_stats=""
-          for branch in $(git branch -r | grep -v '\->' | sed 's/origin\///'); do
-            git checkout -q $branch
-            files=$(find . -type f | wc -l)
-            lines=$(find . -type f -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' | xargs wc -l | tail -n1 | awk '{print $1}')
-            branch_stats="${branch_stats}- **$branch**: $files files, $lines lines\n"
+    
+          for branch in $(git branch -r | grep -v '\->' | sed 's|origin/||' | grep -v '^pull/'); do
+            echo "::group::Processing $branch"
+            git worktree add --quiet "$tmp_dir/$branch" origin/$branch
+            cd "$tmp_dir/$branch"
+    
+            files=$(find . -type f -not -path "./.git/*" | wc -l)
+            lines=$(find . -type f \( -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' \) \
+              -exec cat {} + | wc -l)
+    
+            branch_stats+="- **$branch**: $files files, $lines lines\n"
+    
+            cd - >/dev/null
+            git worktree remove -f "$tmp_dir/$branch"
+            echo "::endgroup::"
           done
-          echo -e "branch_stats<<EOF\n${branch_stats}EOF" >> $GITHUB_OUTPUT
+    
+          branch_stats="${branch_stats//'%'/'%25'}"
+          branch_stats="${branch_stats//$'\n'/'%0A'}"
+          branch_stats="${branch_stats//$'\r'/'%0D'}"
+    
+          echo "branch_stats=$branch_stats" >> $GITHUB_OUTPUT
     
       - name: Comment on PR with full stats
         uses: peter-evans/create-or-update-comment@v3
